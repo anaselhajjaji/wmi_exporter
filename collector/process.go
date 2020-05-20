@@ -43,6 +43,7 @@ type processCollector struct {
 	ThreadCount       *prometheus.Desc
 	VirtualBytes      *prometheus.Desc
 	WorkingSet        *prometheus.Desc
+	WorkingSetPrivate *prometheus.Desc
 
 	processWhitelistPattern *regexp.Regexp
 	processBlacklistPattern *regexp.Regexp
@@ -132,6 +133,12 @@ func newProcessCollector() (Collector, error) {
 		WorkingSet: prometheus.NewDesc(
 			prometheus.BuildFQName(Namespace, subsystem, "working_set"),
 			"Maximum number of bytes in the working set of this process at any point in time. The working set is the set of memory pages touched recently by the threads in the process. If free memory in the computer is above a threshold, pages are left in the working set of a process even if they are not in use. When free memory falls below a threshold, pages are trimmed from working sets. If they are needed, they are then soft-faulted back into the working set before they leave main memory.",
+			[]string{"process", "process_id", "creating_process_id"},
+			nil,
+		),
+		WorkingSetPrivate: prometheus.NewDesc(
+			prometheus.BuildFQName(Namespace, subsystem, "working_set_private"),
+			"Maximum number of bytes in the private working set of this process at any point in time.",
 			[]string{"process", "process_id", "creating_process_id"},
 			nil,
 		),
@@ -384,6 +391,15 @@ func (c *processCollector) Collect(ctx *ScrapeContext, ch chan<- prometheus.Metr
 			c.WorkingSet,
 			prometheus.GaugeValue,
 			process.WorkingSet,
+			processName,
+			pid,
+			cpid,
+		)
+
+		ch <- prometheus.MustNewConstMetric(
+			c.WorkingSetPrivate,
+			prometheus.GaugeValue,
+			process.WorkingSetPrivate,
 			processName,
 			pid,
 			cpid,
